@@ -5,13 +5,14 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
+	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/logs"
 )
 
 type FSMessage struct {
@@ -129,17 +130,49 @@ func PostToFeiShuv2(title, text, Fsurl, userOpenId, logsign string) string {
 	} else {
 		color = "red"
 	}
+	yamlFile, err := ioutil.ReadFile("./conf/config.yaml")
+	if err != nil {
+		logs.Error("Error reading YAML file: %s\n", err)
+	}
+	var config map[string][]string
+	err = yaml.Unmarshal(yamlFile, &config)
+	if err != nil {
+		logs.Error("Error parsing YAML file: %s\n", err)
+	}
+	mapKeys := func(m map[string][]string) (keySlice []string) {
+		for key := range m {
+			keySlice = append(keySlice, key)
+		}
+		return keySlice
+	}(config)
+
+	logs.Info("config info-->", config)
+
+	var userID []string
+
+	for _, v := range mapKeys {
+		if strings.Contains(text, v) {
+			userID = config[v]
+		}
+	}
 
 	SendContent := text
-	if userOpenId != "" {
+	if userOpenId != "" && strings.Contains(userOpenId, "mantle.xyz") {
+		SendContent = func(sendContext string) string {
+			for _, v := range userID {
+				s := fmt.Sprintf(`<at id=%s></at>`, v)
+				sendContext += s
+			}
+			return sendContext
+		}(SendContent)
+	} else {
 		OpenIds := strings.Split(userOpenId, ",")
 		OpenIdtext := ""
 		for _, OpenId := range OpenIds {
-			OpenIdtext += "<at user_id=" + OpenId + " id=" + OpenId + " email=" + OpenId  + "></at>"
+			OpenIdtext += "<at user_id=" + OpenId + " id=" + OpenId + " email=" + OpenId + "></at>"
 		}
 		SendContent += OpenIdtext
 	}
-
 	u := FSMessagev2{
 		MsgType: "interactive",
 		Email:   "xxxxxxxxxxx@qq.com",
