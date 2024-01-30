@@ -35,6 +35,8 @@ COPY --from=builder /go/src/github.com/feiyu563/PrometheusAlert/PrometheusAlert 
 
 COPY db/PrometheusAlertDB.db /opt/PrometheusAlertDB.db
 
+COPY db/prometheus-alert-template.json db/prometheus-alert-template.json
+
 COPY conf/app-example.conf conf/app.conf
 
 COPY db db
